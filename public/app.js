@@ -18,6 +18,7 @@ const EXTRA_COST = {
 };
 
 const rooms = [];
+const projectFiles = [];
 
 const formatCurrency = (value) =>
     new Intl.NumberFormat("ru-RU", {
@@ -25,6 +26,23 @@ const formatCurrency = (value) =>
         currency: "RUB",
         maximumFractionDigits: 0,
     }).format(value);
+
+const formatSize = (bytes) => {
+    if (!Number.isFinite(bytes)) {
+        return "";
+    }
+
+    const units = ["Б", "КБ", "МБ", "ГБ"];
+    let size = bytes;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+    }
+
+    return `${size.toFixed(size < 10 && unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`;
+};
 
 const updateCostResult = (value, hint) => {
     const result = document.querySelector("#cost-result .value");
@@ -118,10 +136,135 @@ const renderRooms = () => {
     });
 };
 
+const closePreview = () => {
+    const overlay = document.getElementById("preview-overlay");
+    const content = document.getElementById("preview-content");
+
+    if (!overlay || overlay.hasAttribute("hidden")) {
+        return;
+    }
+
+    overlay.setAttribute("hidden", "");
+    content.innerHTML = "";
+};
+
+const openPreview = (entry) => {
+    const overlay = document.getElementById("preview-overlay");
+    const title = document.getElementById("preview-title");
+    const content = document.getElementById("preview-content");
+    const closeButton = overlay.querySelector(".preview-close");
+
+    title.textContent = entry.file.name;
+    content.innerHTML = "";
+
+    if (entry.file.type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = entry.url;
+        img.alt = entry.file.name;
+        content.appendChild(img);
+    } else if (entry.file.type === "application/pdf") {
+        const frame = document.createElement("iframe");
+        frame.src = entry.url;
+        frame.title = entry.file.name;
+        content.appendChild(frame);
+    } else {
+        const unsupported = document.createElement("div");
+        unsupported.className = "unsupported";
+        unsupported.innerHTML = `
+            <p>Предпросмотр для данного типа файла не поддерживается.</p>
+            <p><a href="${entry.url}" download="${entry.file.name}">Скачать ${entry.file.name}</a></p>
+        `;
+        content.appendChild(unsupported);
+    }
+
+    overlay.removeAttribute("hidden");
+
+    if (closeButton) {
+        closeButton.focus();
+    }
+};
+
+const renderFiles = () => {
+    const list = document.getElementById("file-list");
+    list.innerHTML = "";
+
+    if (!projectFiles.length) {
+        const placeholder = document.createElement("li");
+        placeholder.className = "empty";
+        placeholder.textContent = "Файлы ещё не добавлены";
+        list.appendChild(placeholder);
+        return;
+    }
+
+    projectFiles.forEach((entry) => {
+        const item = document.createElement("li");
+        item.innerHTML = `
+            <span>${entry.file.name}</span>
+            <small>${formatSize(entry.file.size)}</small>
+        `;
+        item.title = "Открыть предпросмотр двойным кликом";
+        item.tabIndex = 0;
+        item.addEventListener("dblclick", () => openPreview(entry));
+        item.addEventListener("keydown", (event) => {
+            if ((event.key === "Enter" || event.key === " ") && !event.repeat) {
+                event.preventDefault();
+                openPreview(entry);
+            }
+        });
+        list.appendChild(item);
+    });
+};
+
+const handleFileInput = (event) => {
+    const files = Array.from(event.target.files ?? []);
+
+    if (!files.length) {
+        return;
+    }
+
+    files.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        projectFiles.push({ file, url });
+    });
+
+    event.target.value = "";
+    renderFiles();
+};
+
+const setupPreviewControls = () => {
+    const overlay = document.getElementById("preview-overlay");
+
+    if (!overlay) {
+        return;
+    }
+
+    const closeButton = overlay.querySelector(".preview-close");
+
+    if (!closeButton) {
+        return;
+    }
+
+    closeButton.addEventListener("click", closePreview);
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+            closePreview();
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !overlay.hasAttribute("hidden")) {
+            closePreview();
+        }
+    });
+};
+
 const init = () => {
     document.getElementById("cost-form").addEventListener("submit", calculateCost);
     document.getElementById("room-form").addEventListener("submit", addRoom);
+    document.getElementById("project-files").addEventListener("change", handleFileInput);
+    setupPreviewControls();
     renderRooms();
+    renderFiles();
 };
 
 document.addEventListener("DOMContentLoaded", init);

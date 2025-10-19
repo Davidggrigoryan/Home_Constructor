@@ -88,11 +88,31 @@
                 <div id="layout-grid" aria-label="Схема помещений"></div>
             </div>
         </section>
+
+        <section id="documents" class="card">
+            <h2>Файлы проекта</h2>
+            <p class="section-hint">
+                Загрузите чертежи или изображения проекта и просматривайте их двойным кликом
+            </p>
+            <label class="file-input">
+                <span>Добавить файлы</span>
+                <input type="file" id="project-files" multiple accept="image/*,.pdf" />
+            </label>
+            <ul id="file-list" aria-live="polite"></ul>
+        </section>
     </main>
 
     <footer>
         <p>© 2024 Home Constructor. Проектирование домов доступно каждому.</p>
     </footer>
+
+    <div id="preview-overlay" hidden>
+        <div class="preview-dialog" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+            <button type="button" class="preview-close" aria-label="Закрыть">×</button>
+            <h3 id="preview-title"></h3>
+            <div id="preview-content"></div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
